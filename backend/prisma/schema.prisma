@@ -1,0 +1,498 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  PENDING_VERIFICATION
+}
+
+enum ActivityAction {
+  LOGIN
+  LOGOUT
+  UPLOAD
+  DOWNLOAD
+  DELETE
+  RENAME
+  MOVE
+  COPY
+  SHARE
+  BUCKET_CREATE
+  BUCKET_DELETE
+  BUCKET_UPDATE
+  PERMISSION_CHANGE
+  USER_CREATE
+  USER_UPDATE
+  SETTINGS_CHANGE
+}
+
+enum NotificationType {
+  UPLOAD_COMPLETE
+  UPLOAD_FAILED
+  DOWNLOAD_COMPLETE
+  SHARE_CREATED
+  PERMISSION_CHANGED
+  SYSTEM
+}
+
+enum SharePermission {
+  VIEW
+  DOWNLOAD
+}
+
+enum ProjectMemberRole {
+  OWNER
+  MEMBER
+}
+
+model User {
+  id                String     @id @default(uuid())
+  email             String     @unique
+  passwordHash      String     @map("password_hash")
+  firstName         String     @map("first_name")
+  lastName          String     @map("last_name")
+  avatarUrl         String?    @map("avatar_url")
+  status            UserStatus @default(PENDING_VERIFICATION)
+  emailVerified     Boolean    @default(false) @map("email_verified")
+  emailVerifiedAt   DateTime?  @map("email_verified_at")
+  twoFactorEnabled  Boolean    @default(false) @map("two_factor_enabled")
+  twoFactorSecret   String?    @map("two_factor_secret")
+  lastLoginAt       DateTime?  @map("last_login_at")
+  createdAt         DateTime   @default(now()) @map("created_at")
+  updatedAt         DateTime   @updatedAt @map("updated_at")
+
+  role              Role       @relation(fields: [roleId], references: [id])
+  roleId            String     @map("role_id")
+
+  sessions          Session[]
+  refreshTokens     RefreshToken[]
+  activityLogs      ActivityLog[]
+  notifications     Notification[]
+  shares            Share[]
+  favorites         Favorite[]
+  savedSearches     SavedSearch[]
+  passwordResetTokens PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
+  projectMembers        ProjectMember[]
+
+  @@map("users")
+}
+
+model Role {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  displayName String   @map("display_name")
+  description String?
+  isSystem    Boolean  @default(false) @map("is_system")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  users       User[]
+  permissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  displayName String   @map("display_name")
+  category    String
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  roles       RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String @map("role_id")
+  permissionId String @map("permission_id")
+
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id")
+  deviceName   String?  @map("device_name")
+  deviceType   String?  @map("device_type")
+  ipAddress    String?  @map("ip_address")
+  userAgent    String?  @map("user_agent")
+  lastActiveAt DateTime @default(now()) @map("last_active_at")
+  expiresAt    DateTime @map("expires_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String   @map("user_id")
+  sessionId String?  @map("session_id")
+  expiresAt DateTime @map("expires_at")
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@map("refresh_tokens")
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String   @map("user_id")
+  expiresAt DateTime @map("expires_at")
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@map("password_reset_tokens")
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String   @map("user_id")
+  expiresAt DateTime @map("expires_at")
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@map("email_verification_tokens")
+}
+
+model ActivityLog {
+  id         String         @id @default(uuid())
+  userId     String         @map("user_id")
+  action     ActivityAction
+  resource   String
+  resourceId String?        @map("resource_id")
+  metadata   Json?
+  ipAddress  String?        @map("ip_address")
+  userAgent  String?        @map("user_agent")
+  createdAt  DateTime       @default(now()) @map("created_at")
+
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("activity_logs")
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String           @map("user_id")
+  type      NotificationType
+  title     String
+  message   String
+  read      Boolean          @default(false)
+  metadata  Json?
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+  @@map("notifications")
+}
+
+model Share {
+  id            String          @id @default(uuid())
+  token         String          @unique @default(uuid())
+  userId        String          @map("user_id")
+  bucketName    String          @map("bucket_name")
+  objectKey     String          @map("object_key")
+  permission    SharePermission @default(DOWNLOAD)
+  passwordHash  String?         @map("password_hash")
+  maxDownloads  Int?            @map("max_downloads")
+  downloadCount Int             @default(0) @map("download_count")
+  allowedIps    String[]        @map("allowed_ips")
+  expiresAt     DateTime?       @map("expires_at")
+  active        Boolean         @default(true)
+  createdAt     DateTime        @default(now()) @map("created_at")
+
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@map("shares")
+}
+
+model Favorite {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  bucketName String   @map("bucket_name")
+  objectKey  String   @map("object_key")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, bucketName, objectKey])
+  @@map("favorites")
+}
+
+model SavedSearch {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  name      String
+  query     Json
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("saved_searches")
+}
+
+model BucketMetadata {
+  id           String   @id @default(uuid())
+  name         String   @unique
+  displayName  String?  @map("display_name")
+  description  String?
+  tags         Json     @default("{}")
+  versioning   Boolean  @default(false)
+  publicAccess Boolean  @default(false) @map("public_access")
+  cors         Json?
+  lifecycle    Json?
+  createdById  String?  @map("created_by_id")
+  projectId    String?  @map("project_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  project      Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@map("bucket_metadata")
+}
+
+model Organization {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  displayName String   @map("display_name")
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  projects    Project[]
+
+  @@map("organizations")
+}
+
+model Project {
+  id                         String    @id @default(uuid())
+  organizationId             String    @map("organization_id")
+  name                       String
+  slug                       String    @unique
+  description                String?
+  s3KeyName                  String?   @map("s3_key_name")
+  s3AccessKeyId                String?   @map("s3_access_key_id")
+  s3SecretAccessKeyEnc       String?   @map("s3_secret_access_key_enc")
+  s3CredentialsProvisionedAt DateTime? @map("s3_credentials_provisioned_at")
+  quotaMaxStorageBytes       BigInt?   @map("quota_max_storage_bytes")
+  quotaMaxObjectCount        Int?      @map("quota_max_object_count")
+  createdAt                  DateTime  @default(now()) @map("created_at")
+  updatedAt                  DateTime  @updatedAt @map("updated_at")
+
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  buckets        ProjectBucket[]
+  members        ProjectMember[]
+  bucketMetadata BucketMetadata[]
+  apiKeys        ApiKey[]
+  webhooks       ProjectWebhook[]
+  usage          ProjectUsage?
+
+  @@unique([organizationId, name])
+  @@map("projects")
+}
+
+model ApiKey {
+  id          String    @id @default(uuid())
+  projectId   String    @map("project_id")
+  name        String
+  keyPrefix   String    @map("key_prefix")
+  keyHash     String    @unique @map("key_hash")
+  permissions String[]
+  bucketNames String[]  @map("bucket_names")
+  expiresAt   DateTime? @map("expires_at")
+  lastUsedAt  DateTime? @map("last_used_at")
+  revokedAt   DateTime? @map("revoked_at")
+  createdById String?   @map("created_by_id")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([keyPrefix])
+  @@map("api_keys")
+}
+
+model ProjectBucket {
+  id         String   @id @default(uuid())
+  projectId  String   @map("project_id")
+  bucketName String   @unique @map("bucket_name")
+  isDefault  Boolean  @default(false) @map("is_default")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("project_buckets")
+}
+
+enum GrantSubjectType {
+  USER
+  API_KEY
+}
+
+model BucketAccessGrant {
+  id          String           @id @default(uuid())
+  bucketName  String           @map("bucket_name")
+  subjectType GrantSubjectType @map("subject_type")
+  subjectId   String           @map("subject_id")
+  permissions String[]
+  prefix      String           @default("")
+  createdById String?          @map("created_by_id")
+  createdAt   DateTime         @default(now()) @map("created_at")
+
+  @@unique([bucketName, subjectType, subjectId, prefix])
+  @@index([subjectType, subjectId])
+  @@index([bucketName])
+  @@map("bucket_access_grants")
+}
+
+model ProjectMember {
+  id        String            @id @default(uuid())
+  projectId String            @map("project_id")
+  userId    String            @map("user_id")
+  role      ProjectMemberRole @default(MEMBER)
+  createdAt DateTime          @default(now()) @map("created_at")
+
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@index([userId])
+  @@map("project_members")
+}
+
+model ProjectUsage {
+  projectId    String   @id @map("project_id")
+  storageBytes BigInt   @default(0) @map("storage_bytes")
+  objectCount  Int      @default(0) @map("object_count")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("project_usage")
+}
+
+model ProjectWebhook {
+  id          String   @id @default(uuid())
+  projectId   String   @map("project_id")
+  name        String
+  url         String
+  secretEnc   String   @map("secret_enc")
+  events      String[]
+  active      Boolean  @default(true)
+  createdById String?  @map("created_by_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  project     Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  deliveries  WebhookDelivery[]
+
+  @@index([projectId])
+  @@map("project_webhooks")
+}
+
+enum WebhookDeliveryStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+model WebhookDelivery {
+  id           String                @id @default(uuid())
+  webhookId    String                @map("webhook_id")
+  eventType    String                @map("event_type")
+  payload      Json
+  status       WebhookDeliveryStatus @default(PENDING)
+  statusCode   Int?                  @map("status_code")
+  responseBody String?               @map("response_body")
+  attempts     Int                   @default(0)
+  lastError    String?               @map("last_error")
+  deliveredAt  DateTime?             @map("delivered_at")
+  createdAt    DateTime              @default(now()) @map("created_at")
+
+  webhook      ProjectWebhook @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+
+  @@index([webhookId])
+  @@index([status])
+  @@map("webhook_deliveries")
+}
+
+model SystemSetting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     Json
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("system_settings")
+}
+
+model UploadJob {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  bucketName  String   @map("bucket_name")
+  objectKey   String   @map("object_key")
+  uploadId    String?  @map("upload_id")
+  status      String   @default("pending")
+  totalSize   BigInt   @map("total_size")
+  uploadedSize BigInt  @default(0) @map("uploaded_size")
+  parts       Json?
+  contentType String?  @map("content_type")
+  metadata    Json?
+  error       String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([status])
+  @@map("upload_jobs")
+}
+
+model DailyMetric {
+  id        String   @id @default(uuid())
+  date      DateTime @db.Date
+  metric    String
+  value     BigInt
+  metadata  Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([date, metric])
+  @@index([date])
+  @@map("daily_metrics")
+}

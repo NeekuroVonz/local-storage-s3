@@ -1,0 +1,27 @@
+{
+  "name": "storage-platform",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Production-grade S3 Storage Management Platform",
+  "workspaces": [
+    "frontend",
+    "backend",
+    "packages/*"
+  ],
+  "scripts": {
+    "sync:env": "bash scripts/sync-env.sh",
+    "dev": "bash scripts/sync-env.sh && bun run --filter '@storage/backend' --filter '@storage/frontend' dev",
+    "dev:backend": "bash scripts/sync-env.sh && bun run --filter '@storage/backend' dev",
+    "dev:frontend": "bun run --filter '@storage/frontend' dev",
+    "build": "bun run --filter '@storage/shared' build && bun run --filter '@storage/backend' build && bun run --filter '@storage/frontend' build",
+    "lint": "bun run --filter '*' lint",
+    "test": "bun run --filter '*' test",
+    "db:generate": "bash scripts/sync-env.sh && bun run --filter '@storage/backend' db:generate",
+    "db:migrate": "bash scripts/sync-env.sh && bun run --filter '@storage/backend' db:migrate",
+    "db:seed": "bash scripts/sync-env.sh && bun run --filter '@storage/backend' db:seed"
+  },
+  "engines": {
+    "bun": ">=1.2.0"
+  },
+  "packageManager": "bun@1.2.0"
+}

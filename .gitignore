@@ -1,0 +1,48 @@
+# Dependencies
+node_modules/
+
+# Build
+dist/
+.next/
+out/
+build/
+*.tsbuildinfo
+
+# Environment
+.env
+.env.local
+.env.*.local
+!.env.example
+backend/.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+bun-debug.log*
+
+# Test
+coverage/
+playwright-report/
+test-results/
+
+# Prisma
+backend/prisma/*.db
+backend/prisma/*.db-journal
+
+# Docker volumes
+docker/data/
+
+# Misc
+.turbo/
+.cache/
+.codesight/
+.code-review-graph/

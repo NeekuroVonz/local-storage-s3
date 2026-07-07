@@ -1,0 +1,66 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: storage-postgres-dev
+    environment:
+      POSTGRES_USER: storage
+      POSTGRES_PASSWORD: storage
+      POSTGRES_DB: storage_platform
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U storage -d storage_platform"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - storage-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: storage-redis-dev
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - storage-network
+
+  garage:
+    image: dxflrs/garage:v2.3.0
+    container_name: storage-garage-dev
+    restart: unless-stopped
+    command: ["/garage", "server", "--single-node", "--default-bucket"]
+    environment:
+      GARAGE_DEFAULT_ACCESS_KEY: ${GARAGE_DEFAULT_ACCESS_KEY:-GK0011223344556677}
+      GARAGE_DEFAULT_SECRET_KEY: ${GARAGE_DEFAULT_SECRET_KEY:-dev-storage-secret-key-change-in-production}
+      GARAGE_DEFAULT_BUCKET: ${GARAGE_DEFAULT_BUCKET:-storage}
+    ports:
+      - "3900:3900"
+      - "3903:3903"
+    volumes:
+      - ./garage/garage.toml:/etc/garage.toml:ro
+      - garage_dev_meta:/var/lib/garage/meta
+      - garage_dev_data:/var/lib/garage/data
+    healthcheck:
+      test: ["CMD", "/garage", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    networks:
+      - storage-network
+
+volumes:
+  postgres_dev_data:
+  garage_dev_meta:
+  garage_dev_data:
+
+networks:
+  storage-network:
+    driver: bridge
