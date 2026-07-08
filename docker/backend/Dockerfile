@@ -8,12 +8,13 @@ COPY backend/package.json ./backend/
 COPY frontend/package.json ./frontend/
 COPY backend/prisma ./backend/prisma
 
-# Retry install — npm registry timeouts are common on slow networks.
-# --omit=optional skips platform binaries like @esbuild/linux-x64 (only needed for Vitest).
+# --omit=optional skips flaky platform binaries (e.g. @esbuild/linux-x64 from Vitest).
+# Prisma schema is copied above so backend postinstall (`prisma generate`) succeeds.
+# Do NOT use --ignore-scripts — bcrypt needs its install script for native bindings.
 RUN set -eux; \
   echo "==> Installing packages (retries on network failure)..."; \
   i=1; \
-  until bun install --frozen-lockfile --filter @storage/backend --ignore-scripts --omit=optional; do \
+  until bun install --frozen-lockfile --filter @storage/backend --omit=optional; do \
     if [ "$i" -ge 5 ]; then \
       echo "==> bun install failed after 5 attempts"; \
       exit 1; \
@@ -22,10 +23,6 @@ RUN set -eux; \
     i=$((i + 1)); \
     sleep 15; \
   done; \
-  echo "==> Generating Prisma client..."; \
-  cd /app/backend && bunx prisma generate; \
-  echo "==> Building native modules (bcrypt)..."; \
-  bun --cwd /app/node_modules/bcrypt run install; \
   echo "==> Dependencies ready"
 
 FROM base AS builder
