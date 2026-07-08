@@ -1,4 +1,4 @@
-# Same flow as local: copy repo → bun install → build
+# Same flow as local — visible steps for Docker logs
 FROM oven/bun:1 AS builder
 WORKDIR /app
 
@@ -10,9 +10,17 @@ COPY packages ./packages
 COPY frontend ./frontend
 COPY backend/package.json ./backend/package.json
 
-RUN bun install --frozen-lockfile
-RUN bun run --filter @storage/shared build
-RUN bun run --filter @storage/frontend build
+RUN echo "==> 1/3 bun install (download + link; may take a few minutes)..." \
+  && bun install --frozen-lockfile --ignore-scripts \
+  && echo "==> 1/3 bun install done"
+
+RUN echo "==> 2/3 build shared..." \
+  && bun run --filter @storage/shared build \
+  && echo "==> 2/3 shared done"
+
+RUN echo "==> 3/3 build frontend (Next.js)..." \
+  && bun run --filter @storage/frontend build \
+  && echo "==> 3/3 frontend done"
 
 FROM oven/bun:1-slim AS runner
 WORKDIR /app
