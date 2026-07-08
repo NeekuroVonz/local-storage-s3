@@ -30,51 +30,71 @@ export function Topbar({ title, subtitle, actions }: TopbarProps) {
     toast({ title: 'Logged out', description: 'You have been signed out successfully.' });
   };
 
+  const initials = `${user?.firstName?.[0] ?? ''}${user?.lastName?.[0] ?? ''}` || 'U';
+
   return (
-    <header className="shrink-0 border-b border-border/60 bg-background/80 backdrop-blur-md">
-      <div className="flex flex-col gap-3 px-4 py-3 sm:px-6 lg:min-h-16 lg:flex-row lg:items-center lg:justify-between lg:py-0">
-        <div className="flex min-w-0 items-start gap-3">
+    <header className="shrink-0 border-b border-border/60 bg-background/90 backdrop-blur-md">
+      <div className="flex h-14 items-center gap-2 px-3 sm:h-16 sm:gap-3 sm:px-6">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="shrink-0 lg:hidden"
+          aria-label="Open navigation"
+          onClick={() => setMobileNavOpen(true)}
+        >
+          <Menu className="h-5 w-5" />
+        </Button>
+
+        <div className="min-w-0 flex-1">
+          <h1 className="truncate text-base font-semibold tracking-tight sm:text-xl">{title}</h1>
+          {subtitle && (
+            <p className="hidden truncate text-sm text-muted-foreground sm:block">{subtitle}</p>
+          )}
+        </div>
+
+        {actions && (
+          <div className="hidden items-center gap-2 md:flex">{actions}</div>
+        )}
+
+        <Button
+          variant="ghost"
+          size="icon"
+          className="hidden shrink-0 sm:inline-flex"
+          aria-label="Notifications"
+        >
+          <Bell className="h-4 w-4" />
+        </Button>
+
+        <div className="flex shrink-0 items-center gap-2 rounded-full border border-border/60 bg-card/50 py-1 pl-1 pr-1 sm:rounded-lg sm:pl-1.5 sm:pr-2">
+          <div
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary"
+            title={`${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim()}
+          >
+            {initials}
+          </div>
+          <div className="hidden min-w-0 pr-1 text-sm lg:block">
+            <p className="truncate font-medium leading-none">
+              {user?.firstName} {user?.lastName}
+            </p>
+            <p className="mt-0.5 truncate text-xs capitalize text-muted-foreground">{user?.role}</p>
+          </div>
           <Button
             variant="ghost"
             size="icon"
-            className="mt-0.5 shrink-0 lg:hidden"
-            aria-label="Open navigation"
-            onClick={() => setMobileNavOpen(true)}
+            className="hidden h-8 w-8 lg:inline-flex"
+            onClick={handleLogout}
+            aria-label="Logout"
           >
-            <Menu className="h-5 w-5" />
+            <LogOut className="h-4 w-4" />
           </Button>
-          <div className="min-w-0 flex-1">
-            <h1 className="truncate text-lg font-semibold tracking-tight sm:text-xl">{title}</h1>
-            {subtitle && (
-              <p className="mt-0.5 line-clamp-2 text-sm text-muted-foreground sm:truncate sm:line-clamp-1">
-                {subtitle}
-              </p>
-            )}
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
-          {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
-          <Button variant="ghost" size="icon" className="hidden sm:inline-flex" aria-label="Notifications">
-            <Bell className="h-4 w-4" />
-          </Button>
-          <div className="flex items-center gap-2 rounded-lg border px-2 py-1.5 sm:px-3">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary">
-              {user?.firstName?.[0]}
-              {user?.lastName?.[0]}
-            </div>
-            <div className="hidden min-w-0 text-sm md:block">
-              <p className="truncate font-medium leading-none">
-                {user?.firstName} {user?.lastName}
-              </p>
-              <p className="truncate text-xs capitalize text-muted-foreground">{user?.role}</p>
-            </div>
-            <Button variant="ghost" size="icon" onClick={handleLogout} aria-label="Logout">
-              <LogOut className="h-4 w-4" />
-            </Button>
-          </div>
         </div>
       </div>
+
+      {actions && (
+        <div className="flex items-center gap-2 overflow-x-auto border-t border-border/40 px-3 py-2 md:hidden">
+          {actions}
+        </div>
+      )}
     </header>
   );
 }

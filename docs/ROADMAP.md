@@ -18,3 +18,9 @@
     - ~~Phase 3: Per-bucket ACL grants (optional prefix scope)~~ **Done**
     - ~~Phase 4: Per-tenant S3 credentials + public presigned URL endpoint~~ **Done**
     - ~~Phase 5: Webhooks and per-project quotas~~ **Done**
+14. **File Storage (FileId registry)** — see [FILE_STORAGE.md](FILE_STORAGE.md)
+    - ~~Phase 1: Upload/download/delete by FileId + validation + soft delete~~ **Done**
+    - ~~Phase 2: Metadata get/update/search~~ **Done**
+    - ~~Phase 3: Folder management (root/binding/search/in-use)~~ **Done**
+    - ~~Phase 4: Files/Folders UI (trash, restore, purge, root/binding)~~ **Done**
+

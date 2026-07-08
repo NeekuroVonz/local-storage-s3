@@ -35,6 +35,19 @@ export default () => ({
   credentials: {
     encryptionKey: process.env.CREDENTIALS_ENCRYPTION_KEY,
   },
+  files: {
+    softDeleteEnabled: process.env.FILE_SOFT_DELETE_ENABLED !== 'false',
+    maxUploadBytes: parseInt(process.env.UPLOAD_MAX_BYTES ?? String(100 * 1024 * 1024), 10),
+    allowedExtensions: (process.env.UPLOAD_ALLOWED_EXTENSIONS ?? '')
+      .split(',')
+      .map((value) => value.trim().toLowerCase().replace(/^\./, ''))
+      .filter(Boolean),
+    allowedMimeTypes: (process.env.UPLOAD_ALLOWED_MIME_TYPES ?? '')
+      .split(',')
+      .map((value) => value.trim().toLowerCase())
+      .filter(Boolean),
+    defaultBucket: process.env.FILE_DEFAULT_BUCKET ?? undefined,
+  },
   smtp: {
     host: process.env.SMTP_HOST,
     port: parseInt(process.env.SMTP_PORT ?? '587', 10),

@@ -4,7 +4,7 @@ import { PrismaService } from '../../infrastructure/database/prisma.service';
 import { ActivityService } from '../activity/activity.service';
 import { BucketAccessService } from '../../common/services/bucket-access.service';
 import type { AuthenticatedUser } from '../../common/interfaces/authenticated-user.interface';
-import archiver from 'archiver';
+import * as archiver from 'archiver';
 import { PassThrough } from 'stream';
 
 @Injectable()
@@ -47,7 +47,7 @@ export class DownloadService {
     }
 
     const passThrough = new PassThrough();
-    const archive = archiver('zip', { zlib: { level: 5 } });
+    const archive = archiver.create('zip', { zlib: { level: 5 } });
     archive.pipe(passThrough);
 
     for (const key of keys) {

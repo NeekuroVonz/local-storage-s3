@@ -94,12 +94,21 @@ export const useUploadStore = create<UploadState>((set) => ({
         item.id === id ? { ...item, progress, speed, status: 'uploading' as const } : item,
       ),
     })),
-  updateStatus: (id, status, error) =>
+  updateStatus: (id, status, error) => {
     set((s) => ({
       queue: s.queue.map((item) =>
-        item.id === id ? { ...item, status, error, progress: status === 'completed' ? 100 : item.progress } : item,
+        item.id === id
+          ? { ...item, status, error, progress: status === 'completed' ? 100 : item.progress }
+          : item,
       ),
-    })),
+    }));
+
+    if (status === 'completed') {
+      window.setTimeout(() => {
+        useUploadStore.getState().removeFromQueue(id);
+      }, 1500);
+    }
+  },
   removeFromQueue: (id) => set((s) => ({ queue: s.queue.filter((item) => item.id !== id) })),
   clearCompleted: () =>
     set((s) => ({ queue: s.queue.filter((item) => item.status !== 'completed') })),

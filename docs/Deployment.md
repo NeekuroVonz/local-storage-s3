@@ -7,17 +7,17 @@
 Create a production `.env` file (see `.env.example`). For **IP + custom ports** (no domain):
 
 ```env
-APP_URL=http://10.0.68.57:3212
+APP_URL=http://YOUR_SERVER_IP:3212
 FRONTEND_PORT=3212
 BACKEND_PORT=4013
-NEXT_PUBLIC_API_URL=http://10.0.68.57:4013/api/v1
+NEXT_PUBLIC_API_URL=http://YOUR_SERVER_IP:4013/api/v1
 
 # Internal Docker network (do not use localhost here)
 S3_ENDPOINT=http://garage:3900
 GARAGE_ADMIN_ENDPOINT=http://garage:3903
 
 # Public S3 URL for presigned URLs (LAN clients)
-S3_PUBLIC_ENDPOINT=http://10.0.68.57:3900
+S3_PUBLIC_ENDPOINT=http://YOUR_SERVER_IP:3900
 
 JWT_SECRET=<generate-a-secure-64-char-random-string>
 S3_ACCESS_KEY_ID=<your-key>
@@ -25,7 +25,7 @@ S3_SECRET_ACCESS_KEY=<your-secret>
 GARAGE_ADMIN_TOKEN=<matches docker/garage/garage.toml admin_token>
 ```
 
-Replace `10.0.68.57` with your server IP. `localhost` only works when opening the UI on the server itself.
+Replace `YOUR_SERVER_IP` with the server LAN IP. `localhost` only works when opening the UI on the server itself.
 
 ### 2. Deploy
 

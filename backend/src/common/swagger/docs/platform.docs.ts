@@ -1,5 +1,11 @@
 import { apiDoc } from '../documented-endpoint.decorator';
-import { API_BASE, EXAMPLE_USER_ID, paginated, success } from '../examples/common.examples';
+import {
+  API_BASE,
+  EXAMPLE_PROJECT_ID,
+  EXAMPLE_USER_ID,
+  paginated,
+  success,
+} from '../examples/common.examples';
 
 export const SearchDocs = {
   search: apiDoc({
@@ -134,10 +140,37 @@ export const UsersDocs = {
         lastName: 'Admin',
         status: 'ACTIVE',
         role: { name: 'admin', displayName: 'Admin' },
+        projects: [{ id: EXAMPLE_PROJECT_ID, name: 'Default', role: 'OWNER' }],
       },
     ]),
     curlExample: `curl "${API_BASE}/users?page=1&limit=50" \\
   -H "Authorization: Bearer <accessToken>"`,
+  }),
+
+  create: apiDoc({
+    summary: 'Create user (admin)',
+    purpose: 'Create a platform user with role and optional project memberships (bucket access via projects).',
+    permissions: ['users:manage'],
+    auth: 'bearer',
+    requestExample: {
+      email: 'operator@acme.com',
+      password: 'Operator123!',
+      firstName: 'Ops',
+      lastName: 'User',
+      roleId: 'role-uuid',
+      status: 'ACTIVE',
+      projectIds: [EXAMPLE_PROJECT_ID],
+      projectRole: 'MEMBER',
+    },
+    responseExample: success({
+      id: EXAMPLE_USER_ID,
+      email: 'operator@acme.com',
+      role: { name: 'operator', displayName: 'Operator' },
+    }),
+    curlExample: `curl -X POST ${API_BASE}/users \\
+  -H "Authorization: Bearer <accessToken>" \\
+  -H "Content-Type: application/json" \\
+  -d '{"email":"operator@acme.com","password":"Operator123!","firstName":"Ops","lastName":"User","roleId":"<roleId>","projectIds":["<projectId>"]}'`,
   }),
 
   getOne: apiDoc({
@@ -178,6 +211,19 @@ export const UsersDocs = {
   -H "Authorization: Bearer <accessToken>" \\
   -H "Content-Type: application/json" \\
   -d '{"status":"SUSPENDED"}'`,
+  }),
+
+  updateProjects: apiDoc({
+    summary: 'Assign user to projects',
+    purpose: 'Replace project memberships. Bucket access follows project-linked buckets.',
+    permissions: ['users:manage'],
+    auth: 'bearer',
+    params: { id: { description: 'User UUID', example: EXAMPLE_USER_ID } },
+    requestExample: { projectIds: [EXAMPLE_PROJECT_ID], projectRole: 'MEMBER' },
+    responseExample: success({
+      id: EXAMPLE_USER_ID,
+      projects: [{ id: EXAMPLE_PROJECT_ID, name: 'Default', role: 'MEMBER' }],
+    }),
   }),
 };
 

@@ -30,8 +30,11 @@ import { HealthModule } from './modules/health/health.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { ProjectsModule } from './modules/projects/projects.module';
 import { StorageEventsModule } from './modules/storage-events/storage-events.module';
+import { FilesModule } from './modules/files/files.module';
+import { FoldersModule } from './modules/folders/folders.module';
 import { CombinedAuthGuard } from './common/guards/combined-auth.guard';
 import { JwtOnlyGuard } from './common/guards/jwt-only.guard';
+
 
 @Module({
   imports: [
@@ -79,9 +82,12 @@ import { JwtOnlyGuard } from './common/guards/jwt-only.guard';
     AdminModule,
     ProjectsModule,
     StorageEventsModule,
+    FilesModule,
+    FoldersModule,
     HealthModule,
     SettingsModule,
   ],
+
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: CombinedAuthGuard },

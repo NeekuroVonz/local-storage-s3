@@ -19,6 +19,7 @@ RUN echo "==> 2/3 build shared..." \
   && echo "==> 2/3 shared done"
 
 RUN echo "==> 3/3 build frontend (Next.js)..." \
+  && mkdir -p /app/frontend/public \
   && bun run --filter @storage/frontend build \
   && echo "==> 3/3 frontend done"
 

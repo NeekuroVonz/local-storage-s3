@@ -71,6 +71,8 @@ export function buildSwaggerDocument() {
     .addTag('Objects', 'Object operations inside buckets — list, copy, move, delete, presigned URLs')
     .addTag('Upload', 'File upload — simple and multipart')
     .addTag('Download', 'Download objects or ZIP archives')
+    .addTag('Files', 'File registry — FileId upload/download/metadata/search/soft-delete')
+    .addTag('Folders', 'Folder management — roots, binding, search, in-use guards')
     .addTag('Organizations', 'Top-level grouping for multi-tenant projects')
     .addTag('Projects', 'Tenants — projects, members, buckets, API keys, grants, S3 credentials, webhooks, quotas')
     .addTag('Search', 'Cross-bucket object search and saved queries')

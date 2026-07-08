@@ -21,7 +21,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
           },
         }),
         mutationCache: new MutationCache({
-          onError: (error) => {
+          onError: (error, _variables, _context, mutation) => {
+            if (mutation.meta?.silentError) return;
             toast({
               title: 'Error',
               description: getErrorMessage(error),

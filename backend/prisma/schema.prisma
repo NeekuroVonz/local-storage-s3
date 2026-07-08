@@ -81,6 +81,8 @@ model User {
   passwordResetTokens PasswordResetToken[]
   emailVerificationTokens EmailVerificationToken[]
   projectMembers        ProjectMember[]
+  storedFiles           StoredFile[]      @relation("FileOwner")
+  storageFolders        StorageFolder[]   @relation("FolderCreator")
 
   @@map("users")
 }
@@ -324,6 +326,8 @@ model Project {
   apiKeys        ApiKey[]
   webhooks       ProjectWebhook[]
   usage          ProjectUsage?
+  storedFiles    StoredFile[]
+  storageFolders StorageFolder[]
 
   @@unique([organizationId, name])
   @@map("projects")
@@ -495,4 +499,68 @@ model DailyMetric {
   @@unique([date, metric])
   @@index([date])
   @@map("daily_metrics")
+}
+
+model StorageFolder {
+  id          String   @id @default(uuid())
+  code        String
+  name        String
+  parentId    String?  @map("parent_id")
+  projectId   String?  @map("project_id")
+  bucketName  String   @map("bucket_name")
+  prefix      String   @default("")
+  createdById String?  @map("created_by_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  parent    StorageFolder?  @relation("FolderTree", fields: [parentId], references: [id], onDelete: Restrict)
+  children  StorageFolder[] @relation("FolderTree")
+  project   Project?        @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  createdBy User?           @relation("FolderCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  files     StoredFile[]
+
+  @@unique([projectId, code])
+  @@index([projectId])
+  @@index([parentId])
+  @@index([bucketName])
+  @@index([name])
+  @@map("storage_folders")
+}
+
+model StoredFile {
+  id               String    @id @default(uuid())
+  bucketName       String    @map("bucket_name")
+  objectKey        String    @map("object_key")
+  path             String
+  originalName     String    @map("original_name")
+  contentType      String    @map("content_type")
+  size             BigInt
+  contentHash      String    @map("content_hash")
+  module           String    @default("default")
+  ownerId          String    @map("owner_id")
+  projectId        String?   @map("project_id")
+  folderId         String?   @map("folder_id")
+  description      String?
+  tags             String[]  @default([])
+  customMetadata   Json      @default("{}") @map("custom_metadata")
+  deletedAt        DateTime? @map("deleted_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  owner   User           @relation("FileOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  project Project?       @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  folder  StorageFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
+
+  @@unique([bucketName, objectKey])
+  @@unique([bucketName, path])
+  @@index([ownerId])
+  @@index([module])
+  @@index([folderId])
+  @@index([projectId])
+  @@index([deletedAt])
+  @@index([originalName])
+  @@index([contentType])
+  @@index([size])
+  @@index([createdAt])
+  @@map("stored_files")
 }

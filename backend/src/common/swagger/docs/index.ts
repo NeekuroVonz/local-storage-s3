@@ -19,3 +19,5 @@ export {
   HealthDocs,
   NotificationsDocs,
 } from './platform.docs';
+export { FilesDocs, FoldersDocs } from './files.docs';
+

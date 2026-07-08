@@ -34,6 +34,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { TableContainer } from '@/components/ui/table-container';
+import { RowActionsMenu } from '@/components/ui/row-actions-menu';
+import { EmptyState } from '@/components/ui/empty-state';
 import { apiClient, apiUpload } from '@/lib/api-client';
 import {
   copyObjectUrl,
@@ -42,7 +44,7 @@ import {
   downloadObjectsAsZip,
   openObject,
 } from '@/lib/storage-actions';
-import { formatBytes, formatDate, getFileIcon, cn } from '@/lib/utils';
+import { formatBytes, getFileIcon, cn } from '@/lib/utils';
 import { getErrorMessage } from '@/lib/errors';
 import { useUIStore, useUploadStore } from '@/stores';
 import { toast } from '@/components/ui/toaster';
@@ -89,7 +91,7 @@ export default function BucketExplorerPage({ params }: { params: Promise<{ name:
   const [actionDestination, setActionDestination] = useState('');
   const [isActionLoading, setIsActionLoading] = useState(false);
   const { viewMode, setViewMode } = useUIStore();
-  const { queue, addToQueue, updateStatus } = useUploadStore();
+  const { queue, addToQueue, updateStatus, removeFromQueue } = useUploadStore();
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -355,11 +357,30 @@ export default function BucketExplorerPage({ params }: { params: Promise<{ name:
     });
   };
 
+  const toggleSelectAll = () => {
+    if (selectedKeys.size === filteredItems.length && filteredItems.length > 0) {
+      setSelectedKeys(new Set());
+      return;
+    }
+    setSelectedKeys(new Set(filteredItems.map((item) => item.key)));
+  };
+
   const navigateToPrefix = (index: number) => {
     const parts = breadcrumbs.slice(0, index + 1);
     setPrefix(parts.length > 0 ? parts.join('/') + '/' : '');
     setSelectedKeys(new Set());
   };
+
+  const compactDate = (value?: string) =>
+    value
+      ? new Intl.DateTimeFormat('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+        }).format(new Date(value))
+      : '—';
 
   return (
     <AppShell>
@@ -388,21 +409,36 @@ export default function BucketExplorerPage({ params }: { params: Promise<{ name:
           }
         />
 
-        <div className="flex items-center gap-1 overflow-x-auto border-b px-4 py-2 text-sm sm:px-6">
-          <button onClick={() => { setPrefix(''); setSelectedKeys(new Set()); }} className="flex items-center gap-1 hover:text-primary">
+        <div className="flex items-center gap-1 overflow-x-auto border-b border-border/60 px-4 py-2.5 text-sm sm:px-6">
+          <button
+            type="button"
+            onClick={() => {
+              setPrefix('');
+              setSelectedKeys(new Set());
+            }}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+            title="Root"
+          >
             <Home className="h-4 w-4" />
           </button>
           {breadcrumbs.map((part, i) => (
-            <span key={i} className="flex items-center gap-1">
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-              <button onClick={() => navigateToPrefix(i)} className="hover:text-primary">{part}</button>
+            <span key={`${part}-${i}`} className="flex min-w-0 items-center gap-1">
+              <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/60" />
+              <button
+                type="button"
+                onClick={() => navigateToPrefix(i)}
+                className="max-w-[140px] truncate rounded-md px-1.5 py-1 hover:bg-muted hover:text-foreground sm:max-w-[220px]"
+                title={part}
+              >
+                {part}
+              </button>
             </span>
           ))}
         </div>
 
-        <div className="flex flex-col gap-3 border-b px-4 py-2 sm:px-6">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex min-w-0 flex-1 items-center gap-2">
+        <div className="space-y-3 border-b border-border/60 px-4 py-3 sm:px-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="icon"
@@ -413,199 +449,312 @@ export default function BucketExplorerPage({ params }: { params: Promise<{ name:
                 <RefreshCw className={cn('h-4 w-4', isFetching && 'animate-spin')} />
               </Button>
               {selectedKeys.size > 0 && (
-                <span className="text-sm text-muted-foreground">{selectedKeys.size} selected</span>
+                <span className="rounded-full border border-border/60 bg-muted/40 px-2.5 py-1 text-xs text-muted-foreground">
+                  {selectedKeys.size} selected
+                </span>
               )}
             </div>
-            <div className="flex shrink-0 items-center gap-2">
-              <div className="relative w-full min-w-[140px] max-w-[220px] sm:max-w-none">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <div className="flex items-center gap-2">
+              <div className="relative min-w-0 flex-1 sm:w-56 sm:flex-none">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder="Find by prefix"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8"
+                  className="pl-9"
                 />
               </div>
-              <Button variant={viewMode === 'table' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('table')}>
-                <List className="h-4 w-4" />
-              </Button>
-              <Button variant={viewMode === 'grid' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('grid')}>
-                <Grid3X3 className="h-4 w-4" />
-              </Button>
+              <div className="inline-flex rounded-lg border border-border/60 bg-card/60 p-0.5">
+                <Button
+                  variant={viewMode === 'table' ? 'secondary' : 'ghost'}
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setViewMode('table')}
+                >
+                  <List className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setViewMode('grid')}
+                >
+                  <Grid3X3 className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </div>
 
           {selectedKeys.size > 0 && (
-            <div className="-mx-1 overflow-x-auto pb-1">
-              <div className="flex w-max gap-2 px-1">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleCopyS3Uri}
-                  disabled={!singleSelectedItem}
-                  title="Copy S3 URI"
-                >
-                  <Link2 className="h-4 w-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Copy S3 URI</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleCopyUrl}
-                  disabled={!singleSelectedFile || isActionLoading}
-                  title="Copy presigned URL"
-                >
-                  <Copy className="h-4 w-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Copy URL</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleOpen}
-                  disabled={!singleSelectedFile || isActionLoading}
-                >
-                  <ExternalLink className="h-4 w-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Open</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleDownload}
-                  disabled={selectedFiles.length === 0 || isActionLoading}
-                >
-                  <Download className="h-4 w-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Download</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    if (!singleSelectedItem) return;
-                    openActionDialog(
-                      'rename',
-                      singleSelectedItem.key,
-                      singleSelectedItem.isFolder
-                        ? singleSelectedItem.name
-                        : singleSelectedItem.name,
-                    );
-                  }}
-                  disabled={!singleSelectedItem}
-                >
-                  <Pencil className="h-4 w-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Rename</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    if (!singleSelectedItem) return;
-                    openActionDialog('copy', singleSelectedItem.key, `${singleSelectedItem.key}-copy`);
-                  }}
-                  disabled={!singleSelectedItem}
-                >
-                  <Copy className="h-4 w-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Copy to</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    if (!singleSelectedItem) return;
-                    openActionDialog('move', singleSelectedItem.key, singleSelectedItem.key);
-                  }}
-                  disabled={!singleSelectedItem}
-                >
-                  <span className="hidden sm:inline">Move to</span>
-                  <span className="sm:hidden">Move</span>
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => deleteMutation.mutate(Array.from(selectedKeys))}
-                >
-                  <Trash2 className="h-4 w-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Delete</span>
-                </Button>
-              </div>
+            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDownload}
+                disabled={selectedFiles.length === 0 || isActionLoading}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Download
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => deleteMutation.mutate(Array.from(selectedKeys))}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete
+              </Button>
+              {singleSelectedItem && (
+                <div className="ml-auto">
+                  <RowActionsMenu
+                    items={[
+                      {
+                        label: 'Copy S3 URI',
+                        icon: <Link2 className="h-4 w-4" />,
+                        onClick: handleCopyS3Uri,
+                      },
+                      {
+                        label: 'Copy URL',
+                        icon: <Copy className="h-4 w-4" />,
+                        disabled: !singleSelectedFile || isActionLoading,
+                        onClick: handleCopyUrl,
+                      },
+                      {
+                        label: 'Open',
+                        icon: <ExternalLink className="h-4 w-4" />,
+                        disabled: !singleSelectedFile || isActionLoading,
+                        onClick: handleOpen,
+                      },
+                      {
+                        label: 'Rename',
+                        icon: <Pencil className="h-4 w-4" />,
+                        onClick: () =>
+                          openActionDialog(
+                            'rename',
+                            singleSelectedItem.key,
+                            singleSelectedItem.name,
+                          ),
+                      },
+                      {
+                        label: 'Copy to…',
+                        icon: <Copy className="h-4 w-4" />,
+                        onClick: () =>
+                          openActionDialog(
+                            'copy',
+                            singleSelectedItem.key,
+                            `${singleSelectedItem.key}-copy`,
+                          ),
+                      },
+                      {
+                        label: 'Move to…',
+                        icon: <FolderPlus className="h-4 w-4" />,
+                        onClick: () =>
+                          openActionDialog('move', singleSelectedItem.key, singleSelectedItem.key),
+                      },
+                    ]}
+                  />
+                </div>
+              )}
             </div>
           )}
         </div>
 
         <div className="flex-1 overflow-auto">
           {isLoading ? (
-            <div className="p-6 space-y-2">
+            <div className="space-y-2 p-4 sm:p-6">
               {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="h-12 animate-pulse rounded bg-muted" />
+                <div key={i} className="h-12 animate-pulse rounded-lg bg-muted/40" />
               ))}
             </div>
           ) : filteredItems.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20">
-              <Folder className="h-12 w-12 text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">
-                {searchQuery.trim() ? 'No objects match your search' : 'This folder is empty'}
-              </p>
-              {!searchQuery.trim() && (
-                <p className="text-sm text-muted-foreground">Drag and drop files here to upload</p>
-              )}
+            <div className="flex flex-col items-center justify-center px-4 py-20">
+              <EmptyState
+                icon={Folder}
+                message={
+                  searchQuery.trim()
+                    ? 'No objects match your search'
+                    : 'This folder is empty — drag and drop files to upload'
+                }
+              />
             </div>
           ) : viewMode === 'table' ? (
-            <TableContainer>
-              <table className="w-full">
-              <thead className="border-b bg-muted/50">
-                <tr className="text-left text-sm text-muted-foreground">
-                  <th className="p-3 w-8"></th>
-                  <th className="p-3">Name</th>
-                  <th className="p-3 w-32">Size</th>
-                  <th className="p-3 w-48">Modified</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredItems.map((item) => (
-                  <tr
-                    key={item.key}
-                    className={cn(
-                      'border-b hover:bg-muted/50 cursor-pointer transition-colors',
-                      selectedKeys.has(item.key) && 'bg-primary/5',
-                    )}
-                    onClick={() => item.isFolder ? setPrefix(item.key) : toggleSelect(item.key)}
-                    onDoubleClick={() => handleItemOpen(item)}
-                  >
-                    <td className="p-3" onClick={(e) => { e.stopPropagation(); toggleSelect(item.key); }}>
-                      <input type="checkbox" checked={selectedKeys.has(item.key)} readOnly />
-                    </td>
-                    <td className="p-3 flex items-center gap-2">
-                      <FileIcon name={item.name} isFolder={item.isFolder} />
-                      <span className="font-medium">{item.name}</span>
-                    </td>
-                    <td className="p-3 text-sm text-muted-foreground">
-                      {item.isFolder ? '—' : formatBytes(item.size ?? 0)}
-                    </td>
-                    <td className="p-3 text-sm text-muted-foreground">
-                      {item.lastModified ? formatDate(item.lastModified) : '—'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-              </table>
-            </TableContainer>
+            <div className="p-3 sm:p-4">
+              <div className="overflow-hidden rounded-xl border border-border/50">
+                <TableContainer>
+                  <table className="w-full table-fixed text-sm">
+                    <thead className="border-b border-border/60 bg-muted/30">
+                      <tr className="text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                        <th className="w-10 px-3 py-3 sm:px-4">
+                          <input
+                            type="checkbox"
+                            checked={
+                              filteredItems.length > 0 &&
+                              selectedKeys.size === filteredItems.length
+                            }
+                            onChange={toggleSelectAll}
+                            aria-label="Select all"
+                          />
+                        </th>
+                        <th className="px-3 py-3 sm:px-4">Name</th>
+                        <th className="hidden w-24 px-3 py-3 sm:table-cell sm:px-4">Size</th>
+                        <th className="hidden w-40 px-3 py-3 md:table-cell md:px-4">Modified</th>
+                        <th className="w-14 px-2 py-3 text-right sm:w-16 sm:px-3"> </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredItems.map((item) => (
+                        <tr
+                          key={item.key}
+                          className={cn(
+                            'border-b border-border/40 transition-colors last:border-0 hover:bg-muted/20',
+                            selectedKeys.has(item.key) && 'bg-primary/5',
+                          )}
+                        >
+                          <td
+                            className="px-3 py-3 sm:px-4"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedKeys.has(item.key)}
+                              onChange={() => toggleSelect(item.key)}
+                              aria-label={`Select ${item.name}`}
+                            />
+                          </td>
+                          <td
+                            className="max-w-0 cursor-pointer px-3 py-3 sm:px-4"
+                            onClick={() =>
+                              item.isFolder ? setPrefix(item.key) : toggleSelect(item.key)
+                            }
+                            onDoubleClick={() => handleItemOpen(item)}
+                          >
+                            <div className="flex min-w-0 items-center gap-3">
+                              <div className="shrink-0">
+                                <FileIcon name={item.name} isFolder={item.isFolder} />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate font-medium" title={item.name}>
+                                  {item.name}
+                                </p>
+                                <p className="truncate text-xs text-muted-foreground sm:hidden">
+                                  {item.isFolder ? 'Folder' : formatBytes(item.size ?? 0)}
+                                  {item.lastModified
+                                    ? ` · ${compactDate(item.lastModified)}`
+                                    : ''}
+                                </p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="hidden whitespace-nowrap px-3 py-3 tabular-nums text-muted-foreground sm:table-cell sm:px-4">
+                            {item.isFolder ? '—' : formatBytes(item.size ?? 0)}
+                          </td>
+                          <td className="hidden whitespace-nowrap px-3 py-3 text-muted-foreground md:table-cell md:px-4">
+                            {compactDate(item.lastModified)}
+                          </td>
+                          <td
+                            className="px-2 py-3 align-middle sm:px-3"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <div className="flex justify-end">
+                              <RowActionsMenu
+                                items={[
+                                  {
+                                    label: 'Open',
+                                    icon: <ExternalLink className="h-4 w-4" />,
+                                    onClick: () => handleItemOpen(item),
+                                  },
+                                  ...(!item.isFolder
+                                    ? [
+                                        {
+                                          label: 'Download',
+                                          icon: <Download className="h-4 w-4" />,
+                                          onClick: async () => {
+                                            setSelectedKeys(new Set([item.key]));
+                                            setIsActionLoading(true);
+                                            try {
+                                              await downloadObject(bucketName, item.key);
+                                            } catch (error) {
+                                              toast({
+                                                title: 'Download failed',
+                                                description: getErrorMessage(error),
+                                                variant: 'destructive',
+                                              });
+                                            } finally {
+                                              setIsActionLoading(false);
+                                            }
+                                          },
+                                        },
+                                      ]
+                                    : []),
+                                  {
+                                    label: 'Rename',
+                                    icon: <Pencil className="h-4 w-4" />,
+                                    onClick: () =>
+                                      openActionDialog('rename', item.key, item.name),
+                                  },
+                                  {
+                                    label: 'Copy to…',
+                                    icon: <Copy className="h-4 w-4" />,
+                                    onClick: () =>
+                                      openActionDialog('copy', item.key, `${item.key}-copy`),
+                                  },
+                                  {
+                                    label: 'Move to…',
+                                    icon: <FolderPlus className="h-4 w-4" />,
+                                    onClick: () =>
+                                      openActionDialog('move', item.key, item.key),
+                                  },
+                                  {
+                                    label: 'Delete',
+                                    icon: <Trash2 className="h-4 w-4" />,
+                                    destructive: true,
+                                    onClick: () => deleteMutation.mutate([item.key]),
+                                  },
+                                ]}
+                              />
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </TableContainer>
+              </div>
+            </div>
           ) : (
             <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 sm:gap-4 sm:p-6 md:grid-cols-4 lg:grid-cols-6">
               {filteredItems.map((item) => (
-                <button
+                <div
                   key={item.key}
-                  onClick={() => item.isFolder ? setPrefix(item.key) : toggleSelect(item.key)}
-                  onDoubleClick={() => handleItemOpen(item)}
                   className={cn(
-                    'flex flex-col items-center gap-2 rounded-xl border p-4 hover:border-primary/50 transition-colors',
+                    'relative flex flex-col items-center gap-2 rounded-xl border border-border/60 bg-card/40 p-4 transition-colors hover:border-primary/40',
                     selectedKeys.has(item.key) && 'border-primary bg-primary/5',
                   )}
                 >
-                  <FileIcon name={item.name} isFolder={item.isFolder} />
-                  <span className="text-sm font-medium truncate w-full text-center">{item.name}</span>
-                  {!item.isFolder && (
-                    <span className="text-xs text-muted-foreground">{formatBytes(item.size ?? 0)}</span>
-                  )}
-                </button>
+                  <input
+                    type="checkbox"
+                    className="absolute left-3 top-3"
+                    checked={selectedKeys.has(item.key)}
+                    onChange={() => toggleSelect(item.key)}
+                    aria-label={`Select ${item.name}`}
+                  />
+                  <button
+                    type="button"
+                    className="flex w-full flex-col items-center gap-2 pt-2"
+                    onClick={() => (item.isFolder ? setPrefix(item.key) : toggleSelect(item.key))}
+                    onDoubleClick={() => handleItemOpen(item)}
+                  >
+                    <FileIcon name={item.name} isFolder={item.isFolder} />
+                    <span className="w-full truncate text-center text-sm font-medium" title={item.name}>
+                      {item.name}
+                    </span>
+                    {!item.isFolder && (
+                      <span className="text-xs text-muted-foreground">
+                        {formatBytes(item.size ?? 0)}
+                      </span>
+                    )}
+                  </button>
+                </div>
               ))}
             </div>
           )}
@@ -614,14 +763,26 @@ export default function BucketExplorerPage({ params }: { params: Promise<{ name:
         {queue.length > 0 && (
           <div className="border-t bg-muted/30 p-4">
             <p className="mb-2 text-sm font-medium">
-              Upload Queue ({queue.filter((q) => q.status === 'uploading').length} active)
+              Upload Queue ({queue.filter((q) => q.status === 'uploading' || q.status === 'pending').length}{' '}
+              active)
             </p>
             <div className="max-h-32 space-y-2 overflow-auto">
               {queue.map((item) => (
                 <div key={item.id} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                   <span className="truncate text-sm sm:flex-1">{item.file.name}</span>
                   <Progress value={item.progress} className="w-full sm:w-32" />
-                  <span className="text-xs capitalize text-muted-foreground sm:w-16">{item.status}</span>
+                  <div className="flex items-center gap-2 sm:w-24 sm:justify-end">
+                    <span className="text-xs capitalize text-muted-foreground">{item.status}</span>
+                    {(item.status === 'failed' || item.status === 'completed') && (
+                      <button
+                        type="button"
+                        className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                        onClick={() => removeFromQueue(item.id)}
+                      >
+                        Dismiss
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

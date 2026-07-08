@@ -10,8 +10,8 @@
   ],
   "scripts": {
     "sync:env": "bash scripts/sync-env.sh",
-    "dev": "bash scripts/sync-env.sh && bun run --filter '@storage/backend' --filter '@storage/frontend' dev",
-    "dev:backend": "bash scripts/sync-env.sh && bun run --filter '@storage/backend' dev",
+    "dev": "bash scripts/sync-env.sh && bun run --filter '@storage/shared' build && bun run --filter '@storage/backend' --filter '@storage/frontend' dev",
+    "dev:backend": "bash scripts/sync-env.sh && bun run --filter '@storage/shared' build && bun run --filter '@storage/backend' dev",
     "dev:frontend": "bun run --filter '@storage/frontend' dev",
     "build": "bun run --filter '@storage/shared' build && bun run --filter '@storage/backend' build && bun run --filter '@storage/frontend' build",
     "lint": "bun run --filter '*' lint",

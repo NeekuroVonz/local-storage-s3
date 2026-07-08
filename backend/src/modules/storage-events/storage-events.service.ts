@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 import { ProjectQuotasService } from '../project-quotas/project-quotas.service';
 import { WebhooksService } from '../webhooks/webhooks.service';
@@ -10,6 +11,7 @@ export class StorageEventsService {
     private readonly prisma: PrismaService,
     private readonly quotas: ProjectQuotasService,
     private readonly webhooks: WebhooksService,
+    private readonly config: ConfigService,
   ) {}
 
   async resolveProjectId(bucketName: string): Promise<string | null> {
@@ -55,6 +57,11 @@ export class StorageEventsService {
       return;
     }
 
+    await this.syncStoredFilesAfterObjectDelete(
+      bucket,
+      objects.map((object) => object.key),
+    );
+
     const projectId = await this.resolveProjectId(bucket);
     if (!projectId) {
       return;
@@ -70,6 +77,39 @@ export class StorageEventsService {
         size: object.size,
       });
     }
+  }
+
+  private async syncStoredFilesAfterObjectDelete(bucket: string, keys: string[]): Promise<void> {
+    if (!keys.length) {
+      return;
+    }
+
+    const softDeleteEnabled = this.config.get<boolean>('files.softDeleteEnabled') ?? true;
+    const files = await this.prisma.storedFile.findMany({
+      where: {
+        bucketName: bucket,
+        objectKey: { in: keys },
+        deletedAt: null,
+      },
+      select: { id: true },
+    });
+
+    if (!files.length) {
+      return;
+    }
+
+    const ids = files.map((file) => file.id);
+    if (softDeleteEnabled) {
+      await this.prisma.storedFile.updateMany({
+        where: { id: { in: ids } },
+        data: { deletedAt: new Date() },
+      });
+      return;
+    }
+
+    await this.prisma.storedFile.deleteMany({
+      where: { id: { in: ids } },
+    });
   }
 
   private async dispatch(

@@ -1,14 +1,36 @@
-import { Controller, Get, Patch, Param, Query, Body, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { RequirePermissions } from '../../common/decorators/auth.decorators';
+import { JwtOnly } from '../../common/decorators/jwt-only.decorator';
+import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import { DocumentedEndpoint } from '../../common/swagger/documented-endpoint.decorator';
 import { UsersDocs } from '../../common/swagger/docs';
-import { Permission } from '@storage/shared';
+import {
+  createUserSchema,
+  updateUserProjectsSchema,
+  updateUserRoleSchema,
+  updateUserStatusSchema,
+  CreateUserInput,
+  UpdateUserProjectsInput,
+  UpdateUserRoleInput,
+  UpdateUserStatusInput,
+  Permission,
+} from '@storage/shared';
 
 @ApiTags('Users')
 @ApiBearerAuth()
+@JwtOnly()
 @Controller('users')
 @UseGuards(PermissionsGuard)
 export class UsersController {
@@ -25,6 +47,13 @@ export class UsersController {
     return this.usersService.findAll(page, limit, search);
   }
 
+  @Post()
+  @RequirePermissions(Permission.USERS_MANAGE)
+  @DocumentedEndpoint(UsersDocs.create)
+  create(@Body(new ZodValidationPipe(createUserSchema)) body: CreateUserInput) {
+    return this.usersService.create(body);
+  }
+
   @Get(':id')
   @RequirePermissions(Permission.USERS_READ)
   @DocumentedEndpoint(UsersDocs.getOne)
@@ -35,7 +64,10 @@ export class UsersController {
   @Patch(':id/role')
   @RequirePermissions(Permission.USERS_MANAGE)
   @DocumentedEndpoint(UsersDocs.updateRole)
-  updateRole(@Param('id') id: string, @Body() body: { roleId: string }) {
+  updateRole(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(updateUserRoleSchema)) body: UpdateUserRoleInput,
+  ) {
     return this.usersService.updateRole(id, body.roleId);
   }
 
@@ -44,8 +76,18 @@ export class UsersController {
   @DocumentedEndpoint(UsersDocs.updateStatus)
   updateStatus(
     @Param('id') id: string,
-    @Body() body: { status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' },
+    @Body(new ZodValidationPipe(updateUserStatusSchema)) body: UpdateUserStatusInput,
   ) {
     return this.usersService.updateStatus(id, body.status);
+  }
+
+  @Patch(':id/projects')
+  @RequirePermissions(Permission.USERS_MANAGE)
+  @DocumentedEndpoint(UsersDocs.updateProjects)
+  updateProjects(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(updateUserProjectsSchema)) body: UpdateUserProjectsInput,
+  ) {
+    return this.usersService.updateProjects(id, body);
   }
 }

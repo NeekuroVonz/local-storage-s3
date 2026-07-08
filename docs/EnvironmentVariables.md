@@ -49,6 +49,16 @@
 
 \* Required for `POST /projects/:id/s3-credentials/provision`
 
+## File registry (`/files`, `/folders`)
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| FILE_SOFT_DELETE_ENABLED | No | true | Soft-delete on `DELETE /files` unless `hard=true` |
+| UPLOAD_MAX_BYTES | No | 104857600 | Max upload size (100MB) |
+| UPLOAD_ALLOWED_EXTENSIONS | No | _(empty = all)_ | e.g. `pdf,png,jpg` |
+| UPLOAD_ALLOWED_MIME_TYPES | No | _(empty = all)_ | e.g. `image/*,application/pdf` |
+| FILE_DEFAULT_BUCKET | No | — | Default bucket when upload omits `bucket` |
+
 ## SMTP (Optional)
 
 | Variable | Required | Default | Description |

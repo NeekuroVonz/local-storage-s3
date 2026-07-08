@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import {
   LayoutDashboard,
   HardDrive,
@@ -15,14 +16,21 @@ import {
   ChevronRight,
   Cloud,
   FolderKanban,
+  FileStack,
+  FolderOpen,
+  LogOut,
   X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useUIStore } from '@/stores';
-import { ThemeToggle } from '@/components/ui/toaster';
+import { useAuthStore, useUIStore } from '@/stores';
+import { ThemeToggle, toast } from '@/components/ui/toaster';
+import { apiClient } from '@/lib/api-client';
+import { Button } from '@/components/ui/button';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/files', label: 'Files', icon: FileStack },
+  { href: '/folders', label: 'Folders', icon: FolderOpen },
   { href: '/buckets', label: 'Buckets', icon: HardDrive },
   { href: '/projects', label: 'Projects', icon: FolderKanban },
   { href: '/search', label: 'Search', icon: Search },
@@ -34,8 +42,23 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { clearAuth } = useAuthStore();
   const { sidebarCollapsed, mobileNavOpen, toggleSidebar, closeMobileNav, setMobileNavOpen } =
     useUIStore();
+
+  const handleLogout = async () => {
+    try {
+      const refreshToken = localStorage.getItem('refreshToken');
+      await apiClient('/auth/logout', { method: 'POST', body: { refreshToken } });
+    } catch {
+      // Continue logout even if API fails
+    }
+    clearAuth();
+    closeMobileNav();
+    router.push('/login');
+    toast({ title: 'Logged out', description: 'You have been signed out successfully.' });
+  };
 
   useEffect(() => {
     closeMobileNav();
@@ -135,11 +158,24 @@ export function Sidebar() {
           className={cn(
             'border-t p-2',
             sidebarCollapsed
-              ? 'lg:flex lg:flex-col lg:items-center lg:gap-1'
-              : 'flex items-center justify-between',
+              ? 'flex flex-col items-center gap-1'
+              : 'flex items-center justify-between gap-1',
           )}
         >
-          <ThemeToggle />
+          <div className={cn('flex items-center gap-1', sidebarCollapsed && 'flex-col')}>
+            <ThemeToggle />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="lg:hidden"
+              onClick={handleLogout}
+              aria-label="Sign out"
+              title="Sign out"
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </div>
           <button
             type="button"
             onClick={toggleSidebar}

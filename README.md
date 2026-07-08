@@ -8,92 +8,129 @@ Production-grade, self-hosted S3 Storage Management Platform compatible with **G
 Browser → Next.js → NestJS API → AWS SDK v3 → Garage S3
 ```
 
-All storage operations go through the S3 API only. The application never accesses Garage's internal database or filesystem.
+Object bytes stay in S3. Platform features (auth, projects, FileId registry, folders, quotas, webhooks) use PostgreSQL.
 
 ## Tech Stack
 
 | Layer | Technology |
-|-------|-----------|
-| Frontend | Next.js 15, React 19, TailwindCSS, shadcn/ui, TanStack Query/Table |
+|-------|------------|
+| Frontend | Next.js 15, React 19, Tailwind CSS, TanStack Query |
 | Backend | NestJS, Prisma, PostgreSQL, Redis, BullMQ |
-| Storage | AWS SDK v3 S3Client → Garage |
-| Auth | JWT + Refresh Tokens, RBAC |
+| Storage | AWS SDK v3 → Garage (or any S3-compatible backend) |
+| Auth | JWT + refresh tokens, RBAC |
 | Deploy | Docker Compose |
 
-## Quick Start
+## Quick Start (local)
 
 ### Prerequisites
 
 - Bun 1.2+
 - Docker & Docker Compose
 
-Garage S3 is included in the local Docker stack (`dxflrs/garage`). No separate Garage install is required for development.
-
-### Development Setup
+### Setup
 
 ```bash
-# Copy environment file
 cp .env.example .env
-# Edit .env with your Garage S3 credentials
+# Local defaults already point at localhost Garage/Postgres/Redis
 
-# Start infrastructure and setup
 chmod +x scripts/dev-setup.sh
 ./scripts/dev-setup.sh
-
-# Start dev servers
-bun dev
 ```
 
-**Default admin credentials:** `admin@storage.local` / `Admin123!`
+`dev-setup` starts Postgres + Redis + Garage, installs deps, builds `@storage/shared`, runs migrations + seed.
 
-### Access Points
+### Run
+
+```bash
+bun run dev
+```
+
+This syncs `.env` → `backend/.env`, builds the shared package if needed, then starts API + UI.
 
 | Service | URL |
 |---------|-----|
 | Frontend | http://localhost:3000 |
 | Backend API | http://localhost:4000/api/v1 |
-| Swagger Docs | http://localhost:4000/api/docs |
-| Health Check | http://localhost:4000/api/v1/health |
+| Swagger | http://localhost:4000/api/docs |
+| Health | http://localhost:4000/api/v1/health |
 | Garage S3 | http://localhost:3900 |
 
-## Project Structure
+**Admin:** `admin@storage.local` / `Admin123!`
 
+### If `bun run dev` fails
+
+1. Infrastructure up?
+
+```bash
+docker compose -f docker/docker-compose.dev.yml ps
+# Expect: storage-postgres-dev, storage-redis-dev, storage-garage-dev
 ```
-├── frontend/          # Next.js 15 application
-├── backend/           # NestJS API server
-├── packages/shared/   # Shared types, Zod schemas, permissions
-├── docker/            # Dockerfiles and Compose configs
-├── docs/              # Documentation
-├── scripts/           # Setup and deployment scripts
-├── infra/             # Infrastructure configs
-└── .github/           # CI/CD workflows
+
+2. Rebuild shared + migrate (after pulling new code):
+
+```bash
+bun install
+bun run --filter @storage/shared build
+bun run db:generate
+bun run db:migrate
+bun run dev
+```
+
+3. Port already in use?
+
+```bash
+lsof -ti :4000 | xargs kill -9
+lsof -ti :3000 | xargs kill -9
+```
+
+4. Only start one side:
+
+```bash
+bun run dev:backend
+bun run dev:frontend
 ```
 
 ## Features
 
-- **Authentication** — Login, logout, refresh tokens, RBAC with 5 system roles
-- **Bucket Management** — Create, delete, configure versioning, CORS, tags
-- **Object Explorer** — Table/grid views, breadcrumbs, drag-and-drop upload
-- **Upload** — Simple and multipart upload with queue and progress
-- **Download** — Single file and bulk ZIP download
-- **Search** — Global and bucket-scoped object search
-- **Sharing** — Presigned URLs and share links with expiration
-- **Dashboard** — Storage stats, activity feed, analytics
-- **Admin** — User/role management, system health, audit logs
-- **Notifications** — Toast and notification center
+- **Auth & RBAC** — JWT, roles, permissions; admin can create users and assign projects
+- **Buckets & object explorer** — S3 list/upload/download/copy/move
+- **Projects / multi-tenant** — buckets, API keys, grants, S3 credentials, webhooks, quotas
+- **Files UI (`/files`)** — FileId upload, metadata, soft delete / trash / restore / purge
+- **Folders UI (`/folders`)** — roots, project binding, search code/name, delete/rename if unused
+- **Sharing, search, dashboard, audit**
+
+See [docs/FILE_STORAGE.md](docs/FILE_STORAGE.md) for FileId APIs.
+
+## Production (Ubuntu / Docker)
+
+```bash
+# On server: edit .env for IP + ports (see .env.example production comments)
+./scripts/deploy.sh
+```
+
+Details: [docs/Deployment.md](docs/Deployment.md)
+
+## Project Structure
+
+```
+├── frontend/           # Next.js UI
+├── backend/            # NestJS API
+├── packages/shared/    # Shared Zod schemas & types
+├── docker/             # Compose + Dockerfiles + garage.toml
+├── docs/               # Guides
+└── scripts/            # dev-setup, deploy, sync-env
+```
 
 ## Documentation
 
-See the [docs/](docs/) directory for detailed guides:
-
-- [Architecture](docs/Architecture.md)
-- [API Reference](docs/API.md)
-- [External Integration](docs/INTEGRATION.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [API](docs/API.md)
+- [File Storage](docs/FILE_STORAGE.md)
+- [Integration](docs/INTEGRATION.md)
 - [Installation](docs/Installation.md)
 - [Deployment](docs/Deployment.md)
-- [Development](docs/Development.md)
 - [Environment Variables](docs/EnvironmentVariables.md)
-- [Permission System](docs/PermissionSystem.md)
+- [Roadmap](docs/ROADMAP.md)
 
 ## License
 

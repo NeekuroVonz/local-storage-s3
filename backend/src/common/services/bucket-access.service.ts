@@ -68,10 +68,7 @@ export class BucketAccessService {
     const projectBuckets = await this.getProjectMemberBucketNames(user.id);
     const grantBuckets = await this.getGrantBucketNames(user);
 
-    if (projectBuckets.length === 0 && grantBuckets.length === 0) {
-      return null;
-    }
-
+    // Empty memberships/grants mean no bucket access (not legacy allow-all).
     return this.mergeBucketNames(projectBuckets, grantBuckets);
   }
 

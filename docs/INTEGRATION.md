@@ -510,7 +510,7 @@ All API errors follow a consistent shape:
 | Member access | `POST /projects/:id/members` — members only see project buckets |
 | Bucket list filtering | `GET /buckets` returns only accessible buckets |
 | Object/upload/download guard | Blocked if bucket not in user's project(s) |
-| Legacy mode | Users with **no** project memberships still see all buckets |
+| Scoped users | Users without project memberships or grants see **no** buckets (admins remain global) |
 
 **Provision an external app:**
 
@@ -609,6 +609,8 @@ Returns `accessKeyId`, `secretAccessKey`, `endpoint`, `region`, and `forcePathSt
 - `DELETE /projects/:projectId/s3-credentials` — revoke and clear stored credentials
 
 **Auto-sync:** When a bucket is linked/unlinked, the project key permissions are updated via the Garage Admin API.
+
+**Local vs global aliases:** Buckets created through the S3 API are often registered as **local aliases** on the root Garage key. Provisioning resolves buckets by global alias, search, or local alias list, and adds a **global alias** when granting access so Admin API calls succeed.
 
 **Presigned URLs:** Set `S3_PUBLIC_ENDPOINT` to a browser-reachable S3 URL. Presigned URLs are rewritten from `S3_ENDPOINT` to `S3_PUBLIC_ENDPOINT` so external clients outside Docker can use them.
 
