@@ -1,44 +1,32 @@
-FROM oven/bun:1 AS base
+# Same flow as local: copy repo → bun install → build
+FROM oven/bun:1 AS builder
 WORKDIR /app
 
-FROM base AS deps
-COPY package.json bun.lock ./
-COPY packages/shared/package.json ./packages/shared/
-COPY frontend/package.json ./frontend/
-COPY backend/package.json ./backend/
-
-RUN set -eux; \
-  echo "==> Installing frontend packages (retries on network failure)..."; \
-  i=1; \
-  until bun install --frozen-lockfile --filter @storage/frontend --ignore-scripts; do \
-    if [ "$i" -ge 5 ]; then \
-      echo "==> bun install failed after 5 attempts"; \
-      exit 1; \
-    fi; \
-    echo "==> Install attempt $i failed — retrying in 15s..."; \
-    i=$((i + 1)); \
-    sleep 15; \
-  done; \
-  echo "==> Dependencies ready"
-
-FROM base AS builder
 ARG NEXT_PUBLIC_API_URL=http://localhost:4000/api/v1
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
+
+COPY package.json bun.lock ./
+COPY packages ./packages
+COPY frontend ./frontend
+COPY backend/package.json ./backend/package.json
+
+RUN bun install --frozen-lockfile
 RUN bun run --filter @storage/shared build
 RUN bun run --filter @storage/frontend build
 
 FROM oven/bun:1-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
+ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
+
 RUN groupadd --system --gid 1001 nodejs \
   && useradd --system --uid 1001 --gid nodejs --no-create-home nextjs
-COPY --from=builder /app/frontend/public ./public
+
+COPY --from=builder --chown=nextjs:nodejs /app/frontend/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/frontend/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/frontend/.next/static ./.next/static
+
 USER nextjs
 EXPOSE 3000
-ENV PORT=3000
-ENV HOSTNAME="0.0.0.0"
 CMD ["bun", "run", "server.js"]

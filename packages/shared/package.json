@@ -11,9 +11,9 @@
     }
   },
   "scripts": {
-    "build": "tsc",
-    "dev": "tsc --watch",
-    "lint": "tsc --noEmit"
+    "build": "bunx tsc",
+    "dev": "bunx tsc --watch",
+    "lint": "bunx tsc --noEmit"
   },
   "dependencies": {
     "zod": "^3.24.1"
