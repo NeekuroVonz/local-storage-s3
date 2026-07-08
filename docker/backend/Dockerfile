@@ -6,6 +6,8 @@ COPY package.json bun.lock ./
 COPY packages/shared/package.json ./packages/shared/
 COPY backend/package.json ./backend/
 COPY frontend/package.json ./frontend/
+# Required by backend postinstall (`prisma generate`)
+COPY backend/prisma ./backend/prisma
 RUN bun install --frozen-lockfile --filter @storage/backend
 
 FROM base AS builder
