@@ -6,9 +6,27 @@ COPY package.json bun.lock ./
 COPY packages/shared/package.json ./packages/shared/
 COPY backend/package.json ./backend/
 COPY frontend/package.json ./frontend/
-# Required by backend postinstall (`prisma generate`)
 COPY backend/prisma ./backend/prisma
-RUN bun install --frozen-lockfile --filter @storage/backend
+
+# Retry install — npm registry timeouts are common on slow networks.
+# --omit=optional skips platform binaries like @esbuild/linux-x64 (only needed for Vitest).
+RUN set -eux; \
+  echo "==> Installing packages (retries on network failure)..."; \
+  i=1; \
+  until bun install --frozen-lockfile --filter @storage/backend --ignore-scripts --omit=optional; do \
+    if [ "$i" -ge 5 ]; then \
+      echo "==> bun install failed after 5 attempts"; \
+      exit 1; \
+    fi; \
+    echo "==> Install attempt $i failed — retrying in 15s..."; \
+    i=$((i + 1)); \
+    sleep 15; \
+  done; \
+  echo "==> Generating Prisma client..."; \
+  cd /app/backend && bunx prisma generate; \
+  echo "==> Building native modules (bcrypt)..."; \
+  bun --cwd /app/node_modules/bcrypt run install; \
+  echo "==> Dependencies ready"
 
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules

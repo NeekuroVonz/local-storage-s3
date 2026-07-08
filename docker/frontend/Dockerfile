@@ -6,7 +6,20 @@ COPY package.json bun.lock ./
 COPY packages/shared/package.json ./packages/shared/
 COPY frontend/package.json ./frontend/
 COPY backend/package.json ./backend/
-RUN bun install --frozen-lockfile --filter @storage/frontend
+
+RUN set -eux; \
+  echo "==> Installing frontend packages (retries on network failure)..."; \
+  i=1; \
+  until bun install --frozen-lockfile --filter @storage/frontend --ignore-scripts; do \
+    if [ "$i" -ge 5 ]; then \
+      echo "==> bun install failed after 5 attempts"; \
+      exit 1; \
+    fi; \
+    echo "==> Install attempt $i failed — retrying in 15s..."; \
+    i=$((i + 1)); \
+    sleep 15; \
+  done; \
+  echo "==> Dependencies ready"
 
 FROM base AS builder
 ARG NEXT_PUBLIC_API_URL=http://localhost:4000/api/v1
