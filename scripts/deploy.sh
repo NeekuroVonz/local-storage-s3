@@ -39,12 +39,14 @@ done
 FRONTEND_PORT="${FRONTEND_PORT:-3000}"
 BACKEND_PORT="${BACKEND_PORT:-4000}"
 
-# Avoid compose bake hangs on some Docker installs; show plain build logs.
-export COMPOSE_BAKE=false
+# Plain build logs where supported; avoid compose bake hangs on some installs.
 export BUILDKIT_PROGRESS=plain
+if docker compose build --help 2>&1 | grep -q 'COMPOSE_BAKE'; then
+  export COMPOSE_BAKE=false
+fi
 
 compose() {
-  docker compose --progress=plain -f "$COMPOSE_FILE" --env-file "$ENV_FILE" "$@"
+  docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" "$@"
 }
 
 echo "Docker: $(docker compose version)"
