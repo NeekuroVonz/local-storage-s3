@@ -5,6 +5,7 @@ FROM base AS deps
 COPY package.json bun.lock ./
 COPY packages/shared/package.json ./packages/shared/
 COPY frontend/package.json ./frontend/
+COPY backend/package.json ./backend/
 RUN bun install --frozen-lockfile --filter @storage/frontend
 
 FROM base AS builder
