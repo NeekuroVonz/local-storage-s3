@@ -4,7 +4,8 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-COMPOSE=(docker compose --project-directory . -f docker/docker-compose.yml)
+ENV_FILE="$ROOT_DIR/.env"
+COMPOSE_FILE="$ROOT_DIR/docker/docker-compose.yml"
 
 require_env() {
   local name="$1"
@@ -14,15 +15,21 @@ require_env() {
   fi
 }
 
-if [[ ! -f .env ]]; then
-  echo "Error: .env not found at $ROOT_DIR/.env"
+if [[ ! -f "$ENV_FILE" ]]; then
+  echo "Error: .env not found at $ENV_FILE"
   echo "Copy .env.example to .env and configure it first."
+  exit 1
+fi
+
+if ! docker info >/dev/null 2>&1; then
+  echo "Error: Docker daemon is not running or you lack permission."
+  echo "Try: sudo usermod -aG docker \$USER  (then log out and back in)"
   exit 1
 fi
 
 set -a
 # shellcheck disable=SC1091
-source .env
+source "$ENV_FILE"
 set +a
 
 for var in JWT_SECRET S3_ACCESS_KEY_ID S3_SECRET_ACCESS_KEY GARAGE_DEFAULT_ACCESS_KEY GARAGE_DEFAULT_SECRET_KEY; do
@@ -32,11 +39,20 @@ done
 FRONTEND_PORT="${FRONTEND_PORT:-3000}"
 BACKEND_PORT="${BACKEND_PORT:-4000}"
 
-echo "Building production images..."
-"${COMPOSE[@]}" build
+# Avoid compose bake hangs on some Docker installs; show plain build logs.
+export COMPOSE_BAKE=false
+export BUILDKIT_PROGRESS=plain
+
+compose() {
+  docker compose --progress=plain -f "$COMPOSE_FILE" --env-file "$ENV_FILE" "$@"
+}
+
+echo "Docker: $(docker compose version)"
+echo "Building production images (this may take several minutes on first run)..."
+compose build
 
 echo "Starting production stack..."
-"${COMPOSE[@]}" up -d
+compose up -d
 
 echo "Waiting for backend..."
 for _ in $(seq 1 30); do
